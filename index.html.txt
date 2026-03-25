@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>AI Matchmaker</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+:root{--bg:#0d0d0d;--card:#1c1c1e;--card2:#2c2c2e;--border:#3a3a3c;--txt:#fff;--txt2:#ababab;--pink:#ff375f;--purple:#bf5af2;--blue:#0a84ff;--green:#32d74b;--yellow:#ffd60a;--grad:linear-gradient(135deg,#f09433,#e6683c,#dc2743,#cc2366)}
+body{font-family:-apple-system,'Segoe UI',sans-serif;background:var(--bg);color:var(--txt);min-height:100vh;max-width:420px;margin:0 auto;padding:0}
+
+/* Shell */
+.shell{display:flex;flex-direction:column;min-height:100vh}
+.topbar{height:52px;display:flex;align-items:center;justify-content:space-between;padding:0 18px;border-bottom:1px solid var(--border);flex-shrink:0}
+.logo{font-size:1.15rem;font-weight:800;background:var(--grad);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.step-pill{background:var(--card2);border-radius:99px;padding:4px 12px;font-size:.75rem;font-weight:700;color:var(--txt2)}
+
+/* Screens */
+.screen{display:none;flex-direction:column;flex:1}
+.screen.active{display:flex}
+.scroll{flex:1;overflow-y:auto;padding:20px 16px 8px;-webkit-overflow-scrolling:touch}
+.scroll::-webkit-scrollbar{display:none}
+.footer{padding:14px 16px 28px;border-top:1px solid var(--border);background:var(--bg);flex-shrink:0}
+
+/* Step indicator */
+.steps{display:flex;gap:6px;margin-bottom:20px}
+.step-dot{flex:1;height:3px;border-radius:99px;background:var(--border)}
+.step-dot.done{background:var(--pink)}
+.step-dot.active{background:#fff}
+
+/* Typography */
+h2{font-size:1.3rem;font-weight:800;margin-bottom:6px;line-height:1.3}
+.sub{font-size:.9rem;color:var(--txt2);line-height:1.5;margin-bottom:20px}
+.instruction{background:var(--card2);border-radius:12px;padding:12px 14px;font-size:.85rem;color:var(--txt2);line-height:1.5;margin-bottom:18px;border-left:3px solid var(--pink)}
+.instruction strong{color:var(--txt)}
+
+/* Big button */
+.btn{width:100%;padding:16px;border-radius:14px;border:none;font-size:1rem;font-weight:700;cursor:pointer;transition:opacity .15s;display:block;text-align:center}
+.btn:active{opacity:.8}
+.btn-main{background:var(--grad);color:#fff;box-shadow:0 4px 20px rgba(220,39,67,.3)}
+.btn-disabled{background:var(--card2);color:var(--txt2);pointer-events:none}
+.btn-outline{background:transparent;border:2px solid var(--border);color:var(--txt)}
+.btn-green{background:var(--green);color:#000}
+
+/* Grids */
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:4px}
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:4px}
+
+/* Profile card */
+.pcard{background:var(--card);border-radius:16px;padding:16px 10px 12px;text-align:center;border:2px solid transparent;cursor:pointer;transition:border .15s,background .15s;position:relative}
+.pcard:active{opacity:.85}
+.pcard.sel{border-color:#fff;background:var(--card2)}
+.pcard .picon{font-size:2.2rem;margin-bottom:8px}
+.pcard .pname{font-size:.82rem;font-weight:700;margin-bottom:2px}
+.pcard .psub{font-size:.7rem;color:var(--txt2);line-height:1.3}
+.pcard .tick{display:none;position:absolute;top:6px;right:6px;width:20px;height:20px;border-radius:50%;background:#fff;color:#000;font-size:.65rem;font-weight:800;align-items:center;justify-content:center}
+.pcard.sel .tick{display:flex}
+
+/* Content card */
+.ccard{background:var(--card);border-radius:16px;padding:14px 10px 12px;text-align:center;border:2px solid transparent;cursor:pointer;transition:border .15s,background .15s;position:relative}
+.ccard:active{opacity:.85}
+.ccard.sel{border-color:#fff;background:var(--card2)}
+.ccard .cicon{font-size:2rem;margin-bottom:6px}
+.ccard .ctitle{font-size:.78rem;font-weight:700;line-height:1.3;margin-bottom:2px}
+.ccard .csub{font-size:.67rem;color:var(--txt2)}
+.tag{position:absolute;top:-8px;left:50%;transform:translateX(-50%);white-space:nowrap;font-size:.6rem;font-weight:700;padding:2px 7px;border-radius:99px}
+.tag.hot{background:var(--pink);color:#fff}
+.tag.trap{background:var(--yellow);color:#000}
+.ccard.sel .cicon::after{content:'✓';position:absolute;top:8px;right:8px;width:20px;height:20px;border-radius:50%;background:#fff;color:#000;font-size:.65rem;font-weight:800;display:flex;align-items:center;justify-content:center;line-height:20px}
+
+/* Selection status bar */
+.sel-status{background:var(--card2);border-radius:12px;padding:10px 14px;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between}
+.sel-dots{display:flex;gap:6px}
+.sdot{width:11px;height:11px;border-radius:50%;background:var(--border);transition:background .15s}
+.sdot.on{background:#fff}
+.sel-txt{font-size:.8rem;color:var(--txt2);font-weight:600}
+
+/* Reveal cards */
+.rev-card{background:var(--card);border-radius:14px;padding:13px 14px;display:flex;align-items:center;gap:12px;margin-bottom:8px;border:2px solid transparent}
+.rev-card.match{border-color:var(--green)}
+.rev-card.miss{border-color:var(--border);opacity:.6}
+.rev-card.ai-only{border-color:var(--yellow)}
+.rev-icon{font-size:1.8rem;width:36px;text-align:center;flex-shrink:0}
+.rev-body{flex:1}
+.rev-title{font-size:.88rem;font-weight:700;margin-bottom:3px}
+.rev-reason{font-size:.72rem;color:var(--txt2);line-height:1.4}
+.badge{display:inline-block;font-size:.62rem;font-weight:700;padding:2px 8px;border-radius:99px;margin-top:4px}
+.badge.g{background:rgba(50,215,75,.15);color:var(--green);border:1px solid var(--green)}
+.badge.r{background:rgba(255,55,95,.15);color:var(--pink);border:1px solid var(--pink)}
+.badge.y{background:rgba(255,214,10,.12);color:var(--yellow);border:1px solid var(--yellow)}
+
+/* Score banner */
+.score{border-radius:14px;padding:14px 16px;display:flex;align-items:center;gap:14px;margin-bottom:16px}
+.score-icon{font-size:2.2rem;flex-shrink:0}
+.score-txt h3{font-size:1rem;font-weight:800;margin-bottom:3px}
+.score-txt p{font-size:.78rem;color:var(--txt2);line-height:1.4}
+
+/* Fact card */
+.fact{background:var(--card);border-radius:16px;padding:16px;margin-bottom:10px;border-left:4px solid var(--pink)}
+.fact:nth-child(2){border-color:var(--purple)}
+.fact:nth-child(3){border-color:var(--blue)}
+.fact:nth-child(4){border-color:var(--yellow)}
+.fact-title{font-size:.9rem;font-weight:800;margin-bottom:6px}
+.fact-body{font-size:.82rem;color:var(--txt2);line-height:1.55}
+
+/* Trending */
+.trend-box{background:var(--card);border-radius:14px;padding:14px;margin-bottom:16px}
+.trend-head{font-size:.72rem;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--yellow);margin-bottom:10px}
+.trow{display:flex;align-items:center;gap:8px;padding:4px 0;border-bottom:1px solid var(--border)}
+.trow:last-child{border-bottom:none}
+.tlbl{font-size:.78rem;color:var(--txt2);min-width:110px}
+.tbar{flex:1;height:5px;background:var(--border);border-radius:99px;overflow:hidden}
+.tfill{height:100%;background:linear-gradient(90deg,var(--pink),var(--yellow));border-radius:99px;transition:width .8s ease}
+.tcnt{font-size:.7rem;color:var(--txt2);min-width:18px;text-align:right}
+
+/* Final */
+.final{display:flex;flex-direction:column;align-items:center;text-align:center;padding:32px 20px 20px}
+.final-e{font-size:5rem;margin-bottom:14px;animation:bob 2s ease-in-out infinite}
+@keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
+.yn{display:flex;gap:10px;width:100%;margin-top:4px}
+.yn button{flex:1;padding:15px;border-radius:12px;border:none;font-size:.95rem;font-weight:700;cursor:pointer}
+.yn .yb{background:var(--pink);color:#fff}
+.yn .nb{background:var(--card2);color:var(--txt)}
+
+/* Results */
+.res{background:var(--card);border-radius:14px;padding:16px;width:100%;margin-top:14px;text-align:left}
+.res-lbl{font-size:.68rem;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--txt2);margin-bottom:8px}
+.big-n{font-size:3rem;font-weight:800;line-height:1;background:linear-gradient(135deg,var(--pink),var(--purple));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.res-sub{font-size:.78rem;color:var(--txt2);margin-bottom:10px}
+.res-bar{height:8px;background:var(--border);border-radius:99px;overflow:hidden;margin-bottom:12px}
+.res-fill{height:100%;background:linear-gradient(90deg,var(--pink),var(--purple));border-radius:99px;transition:width 1.2s ease}
+.res-row{display:flex;justify-content:space-around}
+.rv{font-size:1.2rem;font-weight:800}
+.rl{font-size:.68rem;color:var(--txt2)}
+
+/* Staff */
+#dash{position:fixed;inset:0;background:var(--bg);z-index:200;display:none;flex-direction:column;overflow-y:auto;max-width:420px;margin:0 auto}
+.dhead{padding:52px 18px 14px;background:linear-gradient(180deg,#1a0a2e,transparent)}
+.dhead h2{font-size:1.2rem;font-weight:800}
+.dhead p{font-size:.78rem;color:var(--txt2);margin-top:4px}
+.dbody{padding:0 14px 80px}
+.dtiles{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px}
+.dtile{background:var(--card);border-radius:12px;padding:12px 6px;text-align:center}
+.dtile .dv{font-size:1.5rem;font-weight:800;background:var(--grad);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.dtile .dl{font-size:.62rem;color:var(--txt2);margin-top:2px}
+.dsec{background:var(--card);border-radius:13px;padding:14px;margin-bottom:10px}
+.ds-lbl{font-size:.68rem;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--txt2);margin-bottom:12px}
+.cbars{display:flex;align-items:flex-end;gap:4px;height:52px}
+.cbar{flex:1;background:var(--purple);border-radius:3px 3px 0 0;min-height:3px}
+.cbar-l{font-size:.52rem;color:var(--txt2);text-align:center;margin-top:3px}
+.dfooter{display:flex;gap:8px;padding:4px 14px 20px}
+.dfooter button{flex:1;padding:12px;border-radius:10px;border:none;font-size:.82rem;font-weight:700;cursor:pointer}
+.dback{background:var(--card2);color:var(--txt)}
+.dreset{background:rgba(255,55,95,.12);color:var(--pink);border:1px solid var(--pink)}
+#sTap{position:fixed;top:0;right:0;width:50px;height:50px;z-index:300;cursor:default}
+</style>
+</head>
+<body>
+<div id="sTap" onclick="sTapFn()"></div>
+<div id="dash"></div>
+
+<div class="shell">
+  <div class="topbar">
+    <span class="logo">AI Matchmaker</span>
+    <span class="step-pill" id="stepPill">Intro</span>
+  </div>
+
+  <!-- S1: Intro -->
+  <div class="screen active" id="s1">
+    <div class="scroll" style="display:flex;flex-direction:column;justify-content:center;min-height:calc(100vh - 120px)">
+      <div style="text-align:center;padding:20px 0 28px">
+        <div style="font-size:4rem;margin-bottom:16px;animation:bob 2s ease-in-out infinite">🤖</div>
+        <h2 style="font-size:1.6rem;margin-bottom:12px">Can you outsmart<br>the algorithm?</h2>
+        <p class="sub" style="margin-bottom:0">Social media algorithms decide what millions of people see every day. But how do they work?<br><br>In this game, you'll <strong style="color:#fff">pick a profile</strong>, <strong style="color:#fff">predict what the algorithm recommends</strong>, then see how close you got — and learn why.</p>
+      </div>
+    </div>
+    <div class="footer">
+      <button class="btn btn-main" onclick="go(2)">▶ Let's Play</button>
+    </div>
+  </div>
+
+  <!-- S2: Pick profile -->
+  <div class="screen" id="s2">
+    <div class="scroll">
+      <div class="steps" id="dots2"></div>
+      <h2>Step 1 — Pick a Profile</h2>
+      <div class="instruction">👆 <strong>Tap one card below.</strong> This is the person whose feed the algorithm is building. Each profile behaves differently online — and the algorithm knows it.</div>
+      <div class="grid3" id="profGrid"></div>
+    </div>
+    <div class="footer">
+      <button class="btn btn-disabled" id="btnP">Select a profile to continue</button>
+    </div>
+  </div>
+
+  <!-- S3: Predict -->
+  <div class="screen" id="s3">
+    <div class="scroll">
+      <div class="steps" id="dots3"></div>
+      <h2>Step 2 — Predict the Feed</h2>
+      <div class="instruction">👆 <strong>Tap 2 or 3 cards</strong> you think the algorithm would show this person. Some cards are decoys — they look relevant but the AI ignores them. Choose carefully!</div>
+      <div class="sel-status">
+        <div class="sel-dots"><div class="sdot" id="d1"></div><div class="sdot" id="d2"></div><div class="sdot" id="d3"></div></div>
+        <span class="sel-txt" id="selTxt">Pick at least 2</span>
+      </div>
+      <div class="grid2" id="contentGrid"></div>
+    </div>
+    <div class="footer">
+      <button class="btn btn-disabled" id="btnC" onclick="go(4)">Select 2 or 3 cards first</button>
+    </div>
+  </div>
+
+  <!-- S4: Reveal -->
+  <div class="screen" id="s4">
+    <div class="scroll">
+      <div class="steps" id="dots4"></div>
+      <h2>Step 3 — The Reveal</h2>
+      <p class="sub" style="margin-bottom:14px">Here's what the algorithm actually chose — and how your guesses compared.</p>
+      <div id="scoreBanner"></div>
+      <div id="revCards"></div>
+      <div id="trendWrap"></div>
+    </div>
+    <div class="footer">
+      <button class="btn btn-main" onclick="go(5)">Find out why →</button>
+    </div>
+  </div>
+
+  <!-- S5: Learn -->
+  <div class="screen" id="s5">
+    <div class="scroll">
+      <div class="steps" id="dots5"></div>
+      <h2>Step 4 — How Algorithms Work</h2>
+      <p class="sub" style="margin-bottom:16px">Here's why the algorithm picked what it did — in plain English.</p>
+      <div class="fact">
+        <div class="fact-title">🎯 It matches your interests… mostly</div>
+        <div class="fact-body">The algorithm starts by looking at what you've liked, watched or saved before. If you cook, it shows recipes. But it's not that simple — it's always testing new content too.</div>
+      </div>
+      <div class="fact">
+        <div class="fact-title">🔥 Trending content beats relevance</div>
+        <div class="fact-body">Viral posts — memes, breaking news — get pushed to everyone regardless of interest. Why? Because millions of people already engaged with them, so the algorithm knows they work.</div>
+      </div>
+      <div class="fact">
+        <div class="fact-title">⏱ It measures time, not just likes</div>
+        <div class="fact-body">Liking a post is one signal. But pausing to read something, even if you don't tap anything, tells the algorithm you're interested. It's always watching your behaviour.</div>
+      </div>
+      <div class="fact">
+        <div class="fact-title">🔁 Every action retrains it</div>
+        <div class="fact-body">The algorithm learns from every scroll, tap and second of watch time. You don't just consume the feed — you shape it. The more you use it, the more it knows you.</div>
+      </div>
+    </div>
+    <div class="footer">
+      <button class="btn btn-main" onclick="go(6)">One last question →</button>
+    </div>
+  </div>
+
+  <!-- S6: Final -->
+  <div class="screen" id="s6">
+    <div class="scroll">
+      <div class="steps" id="dots6"></div>
+      <div style="text-align:center;padding:20px 0 16px">
+        <div class="final-e" id="finalE">🤔</div>
+        <h2>Did the AI surprise you?</h2>
+        <p class="sub">Were its picks what you expected for your profile?</p>
+      </div>
+      <div style="display:flex;gap:10px;margin-bottom:16px">
+        <button style="flex:1;padding:18px;border-radius:14px;border:none;font-size:1rem;font-weight:700;cursor:pointer;background:#ff375f;color:#fff" id="btnYes">😲 Yes!</button>
+        <button style="flex:1;padding:18px;border-radius:14px;border:none;font-size:1rem;font-weight:700;cursor:pointer;background:#2c2c2e;color:#fff" id="btnNo">😏 Not really</button>
+      </div>
+      <div id="finalResult"></div>
+      <button class="btn btn-outline" id="replayBtn" onclick="restart()" style="display:none;margin-top:10px;margin-bottom:20px">↩ Play Again</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── Data ──────────────────────────────────────────────────────────────────
+const PROFILES = [
+  {id:'cooking', icon:'🍳', name:'Home Cook',   sub:'Watches recipe reels every evening'},
+  {id:'guitar',  icon:'🎸', name:'Music Fan',   sub:'Learns songs, follows artists'},
+  {id:'travel',  icon:'✈️', name:'Traveller',   sub:'Screenshots destinations, plans trips'},
+  {id:'sports',  icon:'⚽', name:'Sports Fan',  sub:'Checks scores before messages'},
+  {id:'fashion', icon:'👗', name:'Fashionista', sub:'Saves outfits, follows style pages'},
+  {id:'tech',    icon:'💻', name:'Tech Lover',  sub:'Always on the latest apps & gadgets'},
+];
+
+const CONTENT = [
+  {id:'recipe',  icon:'🍽️', title:'Recipe Video',      sub:'12.4k likes',  trap:false, hot:false},
+  {id:'guitar',  icon:'🎵', title:'Guitar Tutorial',    sub:'8.1k likes',   trap:false, hot:false},
+  {id:'travel',  icon:'🌍', title:'Travel Destinations',sub:'31k likes',    trap:false, hot:false},
+  {id:'sports',  icon:'🏆', title:'Sports Highlights',  sub:'44k likes',    trap:false, hot:false},
+  {id:'fashion', icon:'💃', title:'Fashion Tips',       sub:'19k likes',    trap:false, hot:false},
+  {id:'gadgets', icon:'📱', title:'Latest Gadgets',     sub:'27k likes',    trap:false, hot:false},
+  {id:'meme',    icon:'😂', title:'Funny Meme',         sub:'89k likes',    trap:false, hot:true},
+  {id:'news',    icon:'📰', title:'Trending News',      sub:'103k likes',   trap:false, hot:true},
+  {id:'kitchen', icon:'🥘', title:'Kitchen Gadgets',    sub:'5.2k likes',   trap:true,  hot:false},
+  {id:'concert', icon:'🎤', title:'Live Concert Clip',  sub:'14k likes',    trap:true,  hot:false},
+  {id:'hotel',   icon:'🏨', title:'Hotel Reviews',      sub:'22k likes',    trap:true,  hot:false},
+  {id:'fitness', icon:'🏋️', title:'Workout Routine',   sub:'33k likes',    trap:true,  hot:false},
+  {id:'beauty',  icon:'💄', title:'Makeup Tutorial',    sub:'41k likes',    trap:true,  hot:false},
+  {id:'coding',  icon:'👨‍💻',title:'Coding Tutorial',   sub:'18k likes',    trap:true,  hot:false},
+];
+
+const AI_MAP = {
+  cooking:['recipe','meme'],
+  guitar: ['guitar','meme'],
+  travel: ['travel','news'],
+  sports: ['sports','news'],
+  fashion:['fashion','meme'],
+  tech:   ['gadgets','news'],
+};
+
+const DECOY_MAP = {cooking:'kitchen',guitar:'concert',travel:'hotel',sports:'fitness',fashion:'beauty',tech:'coding'};
+
+const REASONS = {
+  recipe:'Matched your cooking interest',
+  guitar:'Matched your music interest',
+  travel:'High engagement in your area',
+  sports:'Matched your sports interest',
+  fashion:'Matched your style interest',
+  gadgets:'Trending in tech',
+  meme:'Viral content — 89k likes',
+  news:'Breaking — everyone is watching',
+};
+
+// ── State ─────────────────────────────────────────────────────────────────
+let profile = null, picks = [], aiRecs = [];
+let cur = 1, sTaps = 0, sTimer = null;
+let G = {trend:{}, surprise:{yes:0,no:0}, plays:0};
+
+// ── Storage ───────────────────────────────────────────────────────────────
+async function loadG(){try{const r=await window.storage.get('aim2',true);if(r)G=JSON.parse(r.value)}catch(e){}}
+async function saveG(){try{await window.storage.set('aim2',JSON.stringify(G),true)}catch(e){}}
+
+// ── Helpers ───────────────────────────────────────────────────────────────
+function shuffle(a){const b=[...a];for(let i=b.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[b[i],b[j]]=[b[j],b[i]]}return b}
+
+function setDots(id, active, total=5){
+  const el=document.getElementById(id); if(!el)return;
+  el.innerHTML=Array.from({length:total},(_,i)=>`<div class="step-dot${i+1<active?' done':i+1===active?' active':''}"></div>`).join('');
+}
+
+const LABELS = {1:'Intro',2:'Step 1 of 5',3:'Step 2 of 5',4:'Step 3 of 5',5:'Step 4 of 5',6:'Step 5 of 5'};
+
+function go(n){
+  document.getElementById('s'+cur).classList.remove('active');
+  cur = n;
+  document.getElementById('s'+n).classList.add('active');
+  document.getElementById('stepPill').textContent = LABELS[n]||'';
+  [2,3,4,5,6].forEach((s,i)=>setDots('dots'+s, i+1));
+  if(n===2) buildProfiles();
+  if(n===3) buildContent();
+  if(n===4) buildReveal();
+  if(n===6) setupFinal();
+}
+
+// ── S2: Profiles ──────────────────────────────────────────────────────────
+function buildProfiles(){
+  profile=null; picks=[];
+  const g=document.getElementById('profGrid'); g.innerHTML='';
+  PROFILES.forEach(p=>{
+    const d=document.createElement('div'); d.className='pcard';
+    d.innerHTML=`<div class="tick">✓</div><div class="picon">${p.icon}</div><div class="pname">${p.name}</div><div class="psub">${p.sub}</div>`;
+    d.onclick=()=>{
+      document.querySelectorAll('.pcard').forEach(c=>c.classList.remove('sel'));
+      d.classList.add('sel'); profile=p;
+      const b=document.getElementById('btnP');
+      b.className='btn btn-main';
+      b.textContent='Continue →';
+      b.onclick=()=>go(3);
+    };
+    g.appendChild(d);
+  });
+}
+
+// ── S3: Content ───────────────────────────────────────────────────────────
+function buildContent(){
+  picks=[];
+  updatePickStatus();
+  const pid=profile.id;
+  const ai=AI_MAP[pid], decoy=DECOY_MAP[pid];
+  const others=CONTENT.filter(x=>!ai.includes(x.id)&&!['meme','news'].includes(x.id)&&!x.trap);
+  const pool=shuffle([
+    ...CONTENT.filter(x=>ai.includes(x.id)),
+    ...CONTENT.filter(x=>['meme','news'].includes(x.id)),
+    CONTENT.find(x=>x.id===decoy),
+    shuffle(others)[0],
+    shuffle(CONTENT.filter(x=>x.trap&&x.id!==decoy))[0],
+  ].filter(Boolean));
+
+  const g=document.getElementById('contentGrid'); g.innerHTML='';
+  pool.forEach(item=>{
+    const d=document.createElement('div'); d.className='ccard';
+    d.innerHTML=`
+      ${item.hot?'<div class="tag hot">🔥 Trending</div>':''}
+      ${item.trap?'<div class="tag trap">👀 Looks relevant?</div>':''}
+      <div class="cicon">${item.icon}</div>
+      <div class="ctitle">${item.title}</div>
+      <div class="csub">${item.sub}</div>`;
+    d.onclick=()=>{
+      if(d.classList.contains('sel')){
+        d.classList.remove('sel');
+        picks=picks.filter(x=>x!==item.id);
+      } else {
+        if(picks.length>=3)return;
+        d.classList.add('sel');
+        picks.push(item.id);
+      }
+      updatePickStatus();
+    };
+    g.appendChild(d);
+  });
+}
+
+function updatePickStatus(){
+  const n=picks.length;
+  [1,2,3].forEach(i=>document.getElementById('d'+i).classList.toggle('on',i<=n));
+  document.getElementById('selTxt').textContent=
+    n===0?'Pick at least 2':n===1?'Pick 1 more':n===2?'Good! Pick one more or continue':'3 selected — ready!';
+  const b=document.getElementById('btnC');
+  if(n>=2){b.className='btn btn-main';b.textContent='See what the AI picked →';}
+  else{b.className='btn btn-disabled';b.textContent='Select '+(2-n)+' more card'+(2-n>1?'s':'');}
+}
+
+// ── S4: Reveal ────────────────────────────────────────────────────────────
+function buildReveal(){
+  aiRecs=AI_MAP[profile.id];
+  aiRecs.forEach(id=>{G.trend[id]=(G.trend[id]||0)+1;});
+
+  const matched=picks.filter(id=>aiRecs.includes(id)).length;
+  const total=aiRecs.length;
+  const pct=Math.round(matched/total*100);
+
+  // Score banner
+  const {col,emoji,title,msg}=pct===100
+    ?{col:'\#32d74b',emoji:'🎯',title:'Perfect!',msg:`You got all ${total} of the AI's picks right`}
+    :pct>=50
+    ?{col:'\#ffd60a',emoji:'👍',title:'Not bad!',msg:`You matched ${matched} of ${total} AI picks`}
+    :{col:'\#ff375f',emoji:'🤖',title:'Algorithm wins!',msg:`Only ${matched} of your guesses matched`};
+
+  document.getElementById('scoreBanner').innerHTML=`
+    <div class="score" style="background:${col}18;border:2px solid ${col}44;margin-bottom:16px">
+      <div class="score-icon">${emoji}</div>
+      <div class="score-txt"><h3 style="color:${col}">${title}</h3><p>${msg}</p></div>
+    </div>`;
+
+  // Cards: your picks first
+  let html='<p style="font-size:.72rem;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--txt2);margin-bottom:8px">YOUR PICKS</p>';
+  picks.forEach(id=>{
+    const item=CONTENT.find(x=>x.id===id);
+    const isMatch=aiRecs.includes(id);
+    html+=`<div class="rev-card ${isMatch?'match':'miss'}">
+      <div class="rev-icon">${item.icon}</div>
+      <div class="rev-body">
+        <div class="rev-title">${item.title}</div>
+        <div class="rev-reason">${isMatch?REASONS[id]:'The algorithm skipped this one'}</div>
+        <span class="badge ${isMatch?'g':'r'}">${isMatch?'✓ AI also picked this':'✗ Not in the AI\'s feed'}</span>
+      </div></div>`;
+  });
+
+  // AI picks not in user's picks
+  const missed=aiRecs.filter(id=>!picks.includes(id));
+  if(missed.length){
+    html+='<p style="font-size:.72rem;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--txt2);margin:14px 0 8px">AI ALSO PICKED</p>';
+    missed.forEach(id=>{
+      const item=CONTENT.find(x=>x.id===id);
+      html+=`<div class="rev-card ai-only">
+        <div class="rev-icon">${item.icon}</div>
+        <div class="rev-body">
+          <div class="rev-title">${item.title}</div>
+          <div class="rev-reason">${REASONS[id]}</div>
+          <span class="badge y">✨ Algorithm pick you missed</span>
+        </div></div>`;
+    });
+  }
+  document.getElementById('revCards').innerHTML=html;
+
+  // Trending
+  const sorted=Object.entries(G.trend).sort((a,b)=>b[1]-a[1]).slice(0,4);
+  const tmax=sorted[0]?sorted[0][1]:1;
+  let th=`<div class="trend-box"><div class="trend-head">🔥 Most picked today by all visitors</div>`;
+  sorted.forEach(([id,cnt])=>{
+    const item=CONTENT.find(x=>x.id===id)||{icon:'❓',title:id};
+    th+=`<div class="trow"><span class="tlbl">${item.icon} ${item.title}</span><div class="tbar"><div class="tfill" style="width:${Math.round(cnt/tmax*100)}%"></div></div><span class="tcnt">${cnt}</span></div>`;
+  });
+  th+='</div>';
+  document.getElementById('trendWrap').innerHTML=th;
+}
+
+// ── S6: Final ─────────────────────────────────────────────────────────────
+function setupFinal(){
+  document.getElementById('btnYes').onclick = () => answer('yes');
+  document.getElementById('btnNo').onclick  = () => answer('no');
+}
+
+async function answer(ans){
+  // Disable buttons immediately to prevent double-tap
+  document.getElementById('btnYes').disabled = true;
+  document.getElementById('btnNo').disabled  = true;
+
+  // Update local state first — show results instantly, save in background
+  G.surprise[ans] = (G.surprise[ans]||0) + 1;
+  G.plays = (G.plays||0) + 1;
+
+  // Show results right away, don't wait for storage
+  showFinalResult(ans);
+
+  // Save in background — non-blocking
+  try { await saveG(); } catch(e) {}
+
+}
+
+function showFinalResult(ans){
+  const tot = G.surprise.yes + G.surprise.no;
+  const yp  = tot > 0 ? Math.round(G.surprise.yes / tot * 100) : 0;
+  const msgs = {
+    yes:'That\'s the algorithm doing its job! It mixes obvious matches with viral content to keep you scrolling longer.',
+    no:'Sharp! Once you know the pattern — interest match plus trending wildcard — you start seeing it everywhere.'
+  };
+  document.getElementById('finalE').textContent = ans==='yes' ? '😲' : '😎';
+  document.getElementById('finalResult').innerHTML = `
+    <div class="fact" style="text-align:left">
+      <div class="fact-title">${ans==='yes'?'😲 It got you!':'😏 You saw it coming'}</div>
+      <div class="fact-body">${msgs[ans]}</div>
+    </div>
+    <div class="res" style="margin-top:10px">
+      <div class="res-lbl">📊 Live results from all visitors</div>
+      <div class="big-n">${yp}%</div>
+      <div class="res-sub">of ${tot} player${tot!==1?'s':''} were surprised by the algorithm</div>
+      <div class="res-bar"><div class="res-fill" style="width:${yp}%"></div></div>
+      <div class="res-row">
+        <div><div class="rv">${G.surprise.yes}</div><div class="rl">😲 Surprised</div></div>
+        <div><div class="rv">${G.surprise.no}</div><div class="rl">😏 Not fooled</div></div>
+        <div><div class="rv">${G.plays}</div><div class="rl">🎮 Plays</div></div>
+      </div>
+    </div>`;
+  document.getElementById('replayBtn').style.display = 'block';
+}
+
+function restart(){location.reload();}
+
+// ── Staff dashboard ───────────────────────────────────────────────────────
+function sTapFn(){
+  sTaps++;clearTimeout(sTimer);
+  sTimer=setTimeout(()=>sTaps=0,2000);
+  if(sTaps>=5){sTaps=0;openDash();}
+}
+
+async function openDash(){
+  await loadG();
+  const tot=G.surprise.yes+G.surprise.no, yp=tot>0?Math.round(G.surprise.yes/tot*100):0;
+  const sorted=Object.entries(G.trend||{}).sort((a,b)=>b[1]-a[1]).slice(0,5);
+  const tmax=sorted[0]?sorted[0][1]:1;
+  const d=document.getElementById('dash');
+  d.innerHTML=`
+    <div class="dhead"><h2>📊 Staff Dashboard</h2><p>Live results · Tap top-right corner 5× to reopen</p></div>
+    <div class="dbody">
+      <div class="dtiles">
+        <div class="dtile"><div class="dv">${G.plays||0}</div><div class="dl">Total Plays</div></div>
+        <div class="dtile"><div class="dv">${yp}%</div><div class="dl">Surprised</div></div>
+        <div class="dtile"><div class="dv">${tot}</div><div class="dl">Responses</div></div>
+      </div>
+      <div class="dsec">
+        <div class="ds-lbl">😲 Surprise rate</div>
+        <div style="text-align:center;margin-bottom:8px">
+          <span style="font-size:2.5rem;font-weight:800;background:linear-gradient(135deg,var(--pink),var(--purple));-webkit-background-clip:text;-webkit-text-fill-color:transparent">${yp}%</span>
+          <br><span style="font-size:.78rem;color:var(--txt2)">${G.surprise.yes||0} surprised · ${G.surprise.no||0} not fooled</span>
+        </div>
+        <div class="res-bar"><div class="res-fill" style="width:${yp}%"></div></div>
+      </div>
+      <div class="dsec">
+        <div class="ds-lbl">🔥 Most recommended content</div>
+        ${sorted.map(([id,cnt])=>{const it=CONTENT.find(x=>x.id===id)||{icon:'❓',title:id};
+          return `<div class="trow"><span class="tlbl">${it.icon} ${it.title}</span><div class="tbar"><div class="tfill" style="width:${Math.round(cnt/tmax*100)}%"></div></div><span class="tcnt">${cnt}</span></div>`;
+        }).join('')}
+      </div>
+      <div class="dfooter">
+        <button class="dback" onclick="closeDash()">← Back</button>
+        <button class="dreset" onclick="resetDash()">🗑 Reset Data</button>
+      </div>
+    </div>`;
+  d.style.display='flex';
+}
+function closeDash(){document.getElementById('dash').style.display='none';}
+async function resetDash(){if(!confirm('Reset all data?'))return;G={trend:{},surprise:{yes:0,no:0},plays:0};await saveG();openDash();}
+
+loadG();
+</script>
+</body>
+</html>
